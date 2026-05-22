@@ -1,4 +1,4 @@
-import { SQL, empty, bind, Schema, ColumnMeta, Columns, t, c} from '@vanit-co/sql-ts';
+import { SQL, empty, bind, Schema, ColumnMeta, Columns, t, c} from 'sql-string-ts';
 
 type EnumType = Record<string, string | number>;
 

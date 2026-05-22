@@ -1,0 +1,59 @@
+services:
+  mysql-service:
+    image: mysql:8.0
+    container_name: mysql-container
+    restart: always
+    environment:
+      #MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+  core-api:
+    image: core-api:0.0.1
+    container_name: core-api
+    restart: always
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
+    volumes:
+      - ./services/core-api:/app
+      #- core_node_modules:/app/node_modules
+    ports:
+      - 3000:3000
+    networks:
+      - app-network
+  easy-pdf:
+    image: pdf:0.0.1
+    container_name: easy-pdf
+    restart: always
+    environment:
+      MIN_POOL: "1"
+      MAX_POOL: "2"
+      ATM: "30000"
+      ITM: "60000"
+    ports:
+      - 3001:3001
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: './data/mysql' # Pasta que será criada no seu diretório atual
+
+  #core_node_modules:
+
+networks:
+  app-network:
+    driver: bridge

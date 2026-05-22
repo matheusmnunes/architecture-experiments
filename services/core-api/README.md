@@ -1,0 +1,1 @@
+sudo docker run -p 3000:3000 teste:0.0.1

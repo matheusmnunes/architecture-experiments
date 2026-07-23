@@ -1,6 +1,7 @@
-import { schema } from '@vanit-co/sql-ts';
+import { schema } from 'sql-string-ts';
 import { z } from 'zod';
-import { defaultColumnsI18n, defaultColumnsI18nSchema } from './parameter-i18n';
+import {  defaultColumnsI18nSchema } from './parameter-i18n';
+import { getSchemaColumns, schemaToEnum } from '../../util/schema-helper.util';
 
 const addColumnsSchema = z.object({
     text: z.string({
@@ -14,9 +15,9 @@ const addColumnsSchema = z.object({
     }),
 });
 
-const parameterTranslationSchema = defaultColumnsI18nSchema.merge(addColumnsSchema);
+const parameterTranslationSchema = defaultColumnsI18nSchema.omit({active: true}).merge(addColumnsSchema);
 
-const columns = Object.keys(parameterTranslationSchema.shape) as Array<keyof z.infer<typeof parameterTranslationSchema>>;
+const columns = schemaToEnum(parameterTranslationSchema);
 
 const parameterTranslation = schema({table : 'parameter_translation', columns: columns, alias: 'pt'});
 

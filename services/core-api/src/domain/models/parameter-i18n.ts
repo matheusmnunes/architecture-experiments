@@ -1,14 +1,9 @@
 import * as z from 'zod';
-import { defaultColumns, defaultColumnsSchema } from './parameter';
-
-
-const defaultColumnsI18nSchemaZ = z.object({
-    i18n_id: z.number()
-});
+import { defaultColumnsSchema } from './parameter';
+import { getSchemaColumns } from '../../util/schema-helper.util';
 
 const defaultColumnsI18nSchema = defaultColumnsSchema.omit({ text: true }).extend({i18n_id: z.number()});
-
-const defaultColumnsI18n = Object.keys(defaultColumnsI18nSchema.shape) as Array<keyof z.infer<typeof defaultColumnsI18nSchema>>;
+const defaultColumnsI18n       = getSchemaColumns(defaultColumnsI18nSchema);
 
 export {
     defaultColumnsI18n,

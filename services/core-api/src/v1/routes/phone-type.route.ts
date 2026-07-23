@@ -3,7 +3,10 @@ import {get, insert,update} from '../services/phone-type.service';
 
 const phone = (router: any) => 
     router
-        .get('/phonetype/:clientId/phonestype', async(ctx:any) => {
+        .get('/phonetype', async(ctx:any) => {
+            ctx.body = await get(Object.assign(ctx.params,ctx.query));
+        })
+        .get('/phonetype/:id', async(ctx:any) => {
             ctx.body = await get(Object.assign(ctx.params,ctx.query));
         })
         .post('/phonetype', async(ctx:any) => {

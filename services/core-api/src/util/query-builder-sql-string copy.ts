@@ -1,4 +1,4 @@
-import { SQL, select, empty, bind, Schema, ColumnMeta, Columns, t, c } from 'sql-string-ts';
+import { SQL, empty, bind, Schema, ColumnMeta, Columns, t, c } from 'sql-string-ts';
 
 type EnumType = Record<string, string | number>;
 
@@ -48,6 +48,31 @@ type Data = Record<string, string | number>;
 
 /*const filters = getRawFilters(SQL ` AND ${getAlias(user)}.password = ${bind(data.password)}`,data);
   console.log(filters);*/
+/**
+ * Retorna um SELECT completo
+ * @param table Tabela
+ * @param columns Colunas das tabelas
+ * @param data Dados do request
+ * @param joins Joins
+ * @param filters Fragment de filtros
+ * @param sort Fragment de sort
+ * @returns Fragment
+ */
+const buildPartsGet = <T>(table: TableColumns<Columns>, columns: Fragment | Array<Fragment>, data = {}, joins: Join[], filters = empty, sort = empty): Fragment => {
+    return buildGetAll(generateColumns, generateJoins)(table, columns, data, joins, filters, sort);
+};
+
+const buildGetAll = (fn1: (x: Fragment | Array<Fragment>) => Fragment, fn2 = null) => {
+    return <T>(table: TableColumns<T>, columns: Fragment | Array<Fragment>, data: EnumType = {}, joins: Join[], filters = empty, sort = empty): Fragment => {
+        let query = SQL`SELECT ${fn1(columns)} FROM ${table} `;
+
+        if (fn2) query = query.concat(fn2(joins));
+        query = query.concat(filters);
+        query = query.concat(sort);
+
+        return query;
+    };
+};
 
 /**
  * Gera os joins formatados
@@ -104,7 +129,7 @@ const generateFilters = <T>(tables: Tables<T>, filters?: EnumType, config = { pr
     const fields = Object.keys(filters);
 
     if (fields.length === 0) return empty;
-    //console.log(fields)
+    console.log(fields)
     const t = !Array.isArray(tables) ? [tables] : tables;
     const where = empty;
 
@@ -168,78 +193,56 @@ const searchFilter = (table, json, config = { prefix: true, quote: true }) => {
     return where
 }
 
-const generateColumnList = ( ...columns: Array<ColumnMeta<Columns> | Fragment> ): Fragment => {
-    const validColumns = columns.filter(hasColumn);
+const setFilters = <T>(tables: Tables<T>, joins: Join[], filters?: EnumType, addFilters = [], raw = empty, filter = {}, config = { prefix: true, quote: true }) => {
+    const f = []
 
-    if(validColumns.length === 0) return empty;
+    f.push(generateFilters(tables, filters, config))
+    f.push(generateFilters(extractTableJoins(joins), filters, config))
+    f.push(additionalFilters(addFilters, filters))
+    f.push(getRawFilters(raw))
+    f.push(searchFilter(tables, filter))
 
-    return validColumns
-        .map(column =>
-            isFragment(column)
-                ? column
-                : select({as:false}, column)
-        )
-        .reduce(
-            (a, column, index) =>
-                a.concat(index > 0 ? SQL`, ${column}` : column),
-            empty
-        );
+    const filtered = f.filter(x => { if (x.strings[0]) return x })
+    const where = filtered.length > 0 ? filtered.reduce((a, x) => a.concat(SQL` AND ${x}`)) : empty
+
+    return where.strings[0] ? SQL` WHERE ${where}` : empty;
 };
 
-function groupBy(...columns: ColumnMeta<Columns>[]): Fragment;
-function groupBy(...columns: Fragment[]): Fragment;
-function groupBy(...columns: Array<ColumnMeta<Columns> | Fragment>): Fragment {
-    return generateColumnList(...columns);
+const groupBy = (field) => {
+    return field ? SQL` GROUP BY ${field}` : empty
 }
 
 //type Sort = {property:ColumnMeta<EnumType>, value?: 'ASC' | 'DESC'}
-//type Sort = { property: string, value?: 'ASC' | 'DESC' } //TODO: quando tiver o front-end estudar possibilidade de enviar um ColumnMeta em property
+type Sort = { property: string, value?: 'ASC' | 'DESC' } //TODO: quando tiver o front-end estudar possibilidade de enviar um ColumnMeta em property
 
-type SortDirection = 'ASC' | 'DESC';
-type SortColumn = {
-    column: ColumnMeta<Columns> | Fragment,
-    direction?: SortDirection
-};
-
+type Pagination = {
+    start,
+    limit
+}
 /**
  * Gera um sort
- * @param sort Direção do sort
- * @param columns Colunas utilizadas no sort
+ * @param table Tabela do modelo
+ * @param sort Objeto com o campo e valor. {property: <campo>, value: <DESC/ASC>}
  * @return Fragment
  */
-const generateSort = (...sorts: SortColumn[]): Fragment => {
-    const validSorts = sorts.filter(({ column }) => hasColumn(column));
+const generateSort = (table, sort: Sort): Fragment => {
+    if (!sort || !sort.property) return empty
 
-    if(validSorts.length === 0) return empty;
+    if (!Object.prototype.hasOwnProperty.call(table, sort.property)) {
+        return empty
+    }
 
-    return validSorts
-        .map(({ column, direction = 'ASC' }) => {
-            const generatedColumn = isFragment(column)
-                ? column
-                : select({as:false}, column);
-
-            return SQL`${generatedColumn} ${direction}`;
-        })
-        .reduce(
-            (a, sort, index) =>
-                a.concat(index > 0 ? SQL`, ${sort}` : sort),
-            empty
-        );
-};
-
-type Pagination = { start: number, limit: number }
-
+    return SQL` ORDER BY ${c(table[sort.property])} ${sort.value ?? empty}`
+}
 /**
- * Cria paginação para o SQL. Recebe um objeto com start e limit. Ex.: {start:0, limit:10}
+ * Gera um sort
  * @param pagination 
  * @return Fragment
  */
-const generatePagination = (start = 0, limit = 10): Fragment => {
-
-    if(limit <= 0) return empty;
-
-    return SQL` ${start}, ${limit}`
+const generatePagination = (pagination: Pagination): Fragment => {
+    return pagination ? SQL` LIMIT ${pagination.start} ,${pagination.limit}` : empty
 }
+
 
 /**
  * Gera os binds do INSERT de acordo com os campos que chegaram e se estão presentes na tabela
@@ -335,147 +338,53 @@ const extractTableJoins = (joins: Join[]) => {
     return joins.length != 0 ? joins.map((j) => j.table) : [];
 };
 
-const builderError = (scope: string, property: string): never => {
-    throw new Error(
-        `[QueryBuilder] O bloco .${scope}() ainda está aberto. ` +
-        `Chame .end() antes de acessar .${property}().`
-    );
-};
-
 const builder = () => {
-    let query        = empty;
-    let currentJoins: Join[] = [];
+    let query = empty;
+   
 
-    const mainBuilder = {
-        select(columns: Fragment | Array<Fragment>) {
-            query = query.concat(SQL`SELECT ${generateColumns(columns)}`);
+    return {
+        select(columns: Fragment) {
+            query = query.concat(SQL`SELECT ${columns}`);
 
-            return mainBuilder;
+            return this;
         },
 
-        from(table: TableColumns<Columns> | Fragment) {
+        from(table: any) {
             query = query.concat(SQL` FROM ${table} `);
 
-            return mainBuilder;
+            return this;
         },
 
-        joins(joins: Join[] = []) {
-            currentJoins = joins;
-            query = query.concat(generateJoins(joins));
+        joins(joins: Join[]) {
+            query = query.concat( generateJoins(joins) );
 
-            return mainBuilder;
+            return this;
         },
 
-        where<T>( tables: Tables<T>, filters?: EnumType, config = { prefix: true, quote: true } ) {
-            const fragments: Fragment[] = [];
-
-            fragments.push(generateFilters(tables, filters, config));
-            fragments.push(
-                generateFilters(
-                    extractTableJoins(currentJoins),
-                    filters,
-                    config
-                )
-            );
-
-            const filterBuilder = {
-                additional(fields: Array<string>) {
-                    fragments.push(additionalFilters(fields, filters));
-
-                    return filterBuilderProxy;
-                },
-
-                raw(fragment: Fragment) {
-                    fragments.push(getRawFilters(fragment));
-
-                    return filterBuilderProxy;
-                },
-
-                search(data = {}) {
-                    fragments.push(searchFilter(tables, data));
-
-                    return filterBuilderProxy;
-                },
-
-                end() {
-                    const validFragments = fragments.filter(
-                        fragment => fragment.strings[0]
-                    );
-
-                    if(validFragments.length > 0) {
-                        const generatedFilters = validFragments.reduce(
-                            (a, fragment, index) =>
-                                a.concat(index > 0 ? SQL` AND ${fragment}` : fragment),
-                            empty
-                        );
-
-                        query = query.concat(SQL` WHERE ${generatedFilters}`);
-                    }
-
-                    return mainBuilder;
-                }
-            };
-
-            const filterBuilderProxy = new Proxy(filterBuilder, {
-                get(target, property, receiver) {
-                    if(Reflect.has(target, property)) {
-                        return Reflect.get(target, property, receiver);
-                    }
-
-                    builderError('where', String(property));
-                }
-            });
-
-            return filterBuilderProxy;
+        where <T>(tables:Tables<T>, filters?: EnumType, config = { prefix: true, quote: true }) {
+            query = query.concat(SQL` WHERE ${generateFilters(tables, filters, config)}`);
+            
+            return this;
         },
 
-        groupBy(...columns: Array<ColumnMeta<Columns> | Fragment>) {
-            const generatedGroupBy = groupBy(...columns);
-
-            if(generatedGroupBy.strings[0]) {
-                query = query.concat(SQL` GROUP BY ${generatedGroupBy}`);
-            }
-
-            return mainBuilder;
+        sort(table, sort: Sort) {
+            console.log(table)
+            query = query.concat(generateSort(table, sort));
+            
+            return this;
         },
 
-        sort(...sorts: SortColumn[]) {
-            const generatedSort = generateSort(...sorts);
+        pagination(pagination = {start: 0, limit: 10}) {
+            query = query.concat(generatePagination(pagination));
 
-            if(hasFragment(generatedSort)) {
-                query = query.concat(SQL` ORDER BY ${generatedSort}`);
-            }
-        
-            return mainBuilder;
-        },
-
-        pagination(start = 0, limit = 10) {
-            const generatedPagination = generatePagination( start, limit );
-
-            if(generatedPagination.strings[0]) {
-                query = query.concat(SQL` LIMIT ${generatedPagination}`);
-            }
-
-            return mainBuilder;
+            return this;
         },
 
         build() {
             return query;
         }
-    };
-
-    return mainBuilder;
+    }
 }
-
-const hasFragment = (fragment: Fragment) =>
-    fragment.strings.some(x => x.length > 0);
-
-const hasColumn = (column: ColumnMeta<Columns> | Fragment) =>
-    !('strings' in column) || hasFragment(column);
-
-const isFragment = (value: ColumnMeta<Columns> | Fragment): value is Fragment => {
-    return Array.isArray((value as Fragment).strings);
-};
 
 export {
     generateJoins,
@@ -484,12 +393,16 @@ export {
     generateColumns,
     additionalFilters,
     getRawFilters,
+    buildGetAll,
+    buildPartsGet,
     buildInsert,
     buildUpdate,
     buildDelete,
+    setFilters,
     generateSort,
     setBindValuesInsert,
     setBindValuesUpdate,
+    Sort,
     EnumType,
     groupBy,
     builder

@@ -1,7 +1,10 @@
 import pool from '../../util/db/mysql';
 import {phones} from '../../domain/models/phone.entity';
 import { translator, next_i18nID } from '../../util/translation.util';
-import { select, insert, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
+//import { select, insert, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
+import { parameterTranslation } from '../../domain/models/parameter-translation.entity';
+import { selectAll, select, SQL} from 'sql-string-ts';
+import {buildGetAll, generateJoin, buildPartsGet, setFilters, builder} from '../../util/query-builder-sql-string';
 
 export default class RPhoneType {
 
@@ -15,18 +18,38 @@ export default class RPhoneType {
     }
 
     getAll = async (data:any) => {
-        if(!this.conn) this.conn = await pool.getConnection();
-        const sql = select`SELECT p.id, t.i18n_id, t.text FROM phone_type_params p
-                            INNER JOIN parameter_translation t ON t.i18n_id = p.i18n_id AND t.lang = ${data.lang}`;
+
+        const joins = [
+          {table:parameterTranslation, join:'INNER JOIN', foreignkey:SQL`p.i18n_id`}
+        ];
         
-        try{
-        const [rows] = await this.conn.query(sql);
-            return rows;
-        } catch (err) {
-            throw err;
-        } finally {
-            this.conn.release();
-        }
+        const sql = builder()
+            .select([SQL`p.id, t.i18n_id, t.text`,selectAll(parameterTranslation,{as :false})])
+            .from(SQL`phone_type_params p`)
+            .joins(joins)
+            .where(parameterTranslation, data)
+                .end()
+            .groupBy(SQL`p.id, t.i18n_id, t.text`,parameterTranslation.lang)
+            .sort(
+                {column:SQL`p.id`, direction:'ASC'},
+                {column:parameterTranslation.lang, direction:'DESC'}
+            )
+            .pagination(data.start, data.limit)
+            .build()
+
+        console.log(sql.text)
+        //if(!this.conn) this.conn = await pool.getConnection();
+        //const sql = select`SELECT p.id, t.i18n_id, t.text FROM phone_type_params p
+        //                    INNER JOIN parameter_translation t ON t.i18n_id = p.i18n_id AND t.lang = ${data.lang}`;
+        //
+        //try{
+        //const [rows] = await this.conn.query(sql);
+        //    return rows;
+        //} catch (err) {
+        //    throw err;
+        //} finally {
+        //    this.conn.release();
+        //}
     }
 
     insert = async (data:any) => {

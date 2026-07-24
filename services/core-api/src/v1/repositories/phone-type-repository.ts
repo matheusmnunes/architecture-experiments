@@ -4,7 +4,7 @@ import { translator, next_i18nID } from '../../util/translation.util';
 //import { select, insert, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
 import { parameterTranslation } from '../../domain/models/parameter-translation.entity';
 import { selectAll, select, SQL} from 'sql-string-ts';
-import {buildGetAll, generateJoin, buildPartsGet, setFilters, builder} from '../../util/query-builder-sql-string';
+import { generateJoin, selectBuilder, insertBuilder,updateBuilder,deleteBuilder} from '../../util/query-builder-sql-string';
 
 export default class RPhoneType {
 
@@ -23,10 +23,11 @@ export default class RPhoneType {
           {table:parameterTranslation, join:'INNER JOIN', foreignkey:SQL`p.i18n_id`}
         ];
         
-        const sql = builder()
+        const sql = selectBuilder()
             .select([SQL`p.id, t.i18n_id, t.text`,selectAll(parameterTranslation,{as :false})])
             .from(SQL`phone_type_params p`)
             .joins(joins)
+                .end()
             .where(parameterTranslation, data)
                 .end()
             .groupBy(SQL`p.id, t.i18n_id, t.text`,parameterTranslation.lang)
@@ -36,6 +37,24 @@ export default class RPhoneType {
             )
             .pagination(data.start, data.limit)
             .build()
+
+        //const sql = buildInsert()
+        //    .into(parameterTranslation)
+        //    .values(data)
+        //    .build()
+
+        //const sql = updateBuilder()
+        //    .table(parameterTranslation)
+        //    .set({text:'teste', erased:1})
+        //    .where({id: 2})
+        //        .end()
+        //    .build();
+
+        //const sql = deleteBuilder({alias:true, quote:true})
+        //    .from(parameterTranslation)
+        //    .where({id: 2})
+        //        .end()
+        //    .build();
 
         console.log(sql.text)
         //if(!this.conn) this.conn = await pool.getConnection();

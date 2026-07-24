@@ -4,12 +4,15 @@ type EnumType = Record<string, string | number>;
 
 type TableColumns<T> = Record<keyof T, ColumnMeta<T>>;
 
+type ColumnInput = Fragment | ColumnMeta<Columns>;
+type ColumnsInput = ColumnInput | Array<ColumnInput>;
+
 export type Join = {
     table: Schema<EnumType>,
-    primaryKey?: ColumnMeta<EnumType>,
+    primaryKey?: ColumnMeta<EnumType> | Fragment,
     operator?: string,
     join?: string,
-    foreignkey: ColumnMeta<EnumType>,
+    foreignkey: ColumnMeta<EnumType> | Fragment,
     useFindInSet?: boolean
 };
 
@@ -20,27 +23,6 @@ type Fragment = typeof empty;
 type Data = Record<string, string | number>;
 
 //EXEMPLOS DE USO
-/*const composeGetAll = (filters, table) => {
-  return new Promise((resolve, reject) => {
-    try {
-      const a = SQL`select`;
-      resolve(a);
-    } catch (e) {
-      reject(e);
-    }
-  });
-};*/
-
-/*
-  compose()
-    .then((x) => x.concat(generateColumns(selectAll(table))))
-    .then((x) => x.concat(SQL` from ${table}`))
-    .then((x) => x.concat(generateFilters(filters, table)))
-    .then((x) => x.concat(additionalFilters(['password'], filters, table)))
-    //.then( x => x.concat(getRawFilters(SQL ` AND ${getAlias(user)}.password = ${bind(data.password)}`,data)) )
-    .then((x) => console.log(x.sql));
-*/
-
 /*const joins = [
     {table:user, join:'innerJoin', foreignkey:user.id},
     {table:user, foreignkey:user.id}
@@ -52,7 +34,7 @@ type Data = Record<string, string | number>;
 /**
  * Gera os joins formatados
  * @param joins Joins da tabela
- * @returns Fragmentos
+ * @returns Fragment
  */
 const generateJoins = (joins: Join[]): Fragment => {
     return joins.length === 0
@@ -74,20 +56,25 @@ const findInSetJoin = (x) => {
     return SQL`${x.join ? x.join : ' LEFT JOIN'} ${x.table} ON FIND_IN_SET(${x.primaryKey ? x.primaryKey : x.table.id}, ${x.foreignkey}) `
 }
 
+const normalizeColumns = ( columns: Array<ColumnsInput> ): Array<ColumnInput> => {
+    return columns.flat();
+};
+
 /**
  * Gera as colunas das tableas
  * @param columns Colunas das tabelas
  * @returns Fragmentos
  */
-const generateColumns = (columns: Fragment | Array<Fragment>): Fragment => {
-    if (Array.isArray(columns)) {
-        const count = columns.length;
-        return columns.reduce(
-            (a, x, i) => a.concat(x).concat(i < count - 1 ? ',' : ' '),
-            empty,
-        );
-    }
-    return columns;
+const generateColumns = (...columns: Array<ColumnsInput>): Fragment => {
+    return generateColumnList( ...normalizeColumns(columns) );
+    //if (Array.isArray(columns)) {
+    //    const count = columns.length;
+    //    return columns.reduce(
+    //        (a, x, i) => a.concat(x).concat(i < count - 1 ? ',' : ' '),
+    //        empty,
+    //    );
+    //}
+    //return columns;
 };
 
 /**
@@ -135,7 +122,7 @@ const additionalFilters = (array: Array<string>, data?: EnumType): Fragment => {
     const final = array
         .map((x) => {
             const field = x.split('.');
-            return filters[field[1]] ? SQL` ${x} = ${bind(filters[field[1]])}` : empty;
+            return filters[field[1]] ? SQL` ${x} = ${bind(filters[field[1]])}` : empty
         })
         .reduce((a, x, i) => a.concat(x.strings[0] ? x : empty));
 
@@ -151,7 +138,7 @@ const getRawFilters = (rawFilters = empty): Fragment => {
     return rawFilters;
 };
 
-const searchFilter = (table, json, config = { prefix: true, quote: true }) => {
+const searchFilter = (table: any, json: any, config = { prefix: true, quote: true }) => {
     if (Object.keys(json).length === 0) return empty
     const filters = json.property.split(',')
 
@@ -174,16 +161,8 @@ const generateColumnList = ( ...columns: Array<ColumnMeta<Columns> | Fragment> )
     if(validColumns.length === 0) return empty;
 
     return validColumns
-        .map(column =>
-            isFragment(column)
-                ? column
-                : select({as:false}, column)
-        )
-        .reduce(
-            (a, column, index) =>
-                a.concat(index > 0 ? SQL`, ${column}` : column),
-            empty
-        );
+        .map(column => isFragment(column) ? column : select({as:false}, column) )
+        .reduce( (a, column, ix) => a.concat(ix > 0 ? SQL`, ${column}` : column), empty );
 };
 
 function groupBy(...columns: ColumnMeta<Columns>[]): Fragment;
@@ -225,47 +204,68 @@ const generateSort = (...sorts: SortColumn[]): Fragment => {
                 a.concat(index > 0 ? SQL`, ${sort}` : sort),
             empty
         );
-};
-
-type Pagination = { start: number, limit: number }
+}
 
 /**
- * Cria paginação para o SQL. Recebe um objeto com start e limit. Ex.: {start:0, limit:10}
- * @param pagination 
+ * Cria paginação para o SQL. Recebe um objeto com start e limit.
+ * @param start 
+ * @param limit
  * @return Fragment
  */
-const generatePagination = (start = 0, limit = 10): Fragment => {
+const generatePagination = (start:number, limit:number = 10): Fragment => {
 
-    if(limit <= 0) return empty;
+    if(start < 0 || limit <= 0) return empty;
 
     return SQL` ${start}, ${limit}`
+}
+
+const colsForInsert = (data: Data, table: TableColumns<Columns>): { data: Data; columns: ColumnMeta<Columns>[] } => {
+    const sanitizedData = { ...data }
+
+    if (sanitizedData.hasOwnProperty('erased')) delete sanitizedData.erased
+
+    const colsForInsert = Object.keys(sanitizedData).map((x) => table[x]).filter((x, i) => { if (x !== undefined) return x });
+
+    return {
+        data: sanitizedData,
+        columns: colsForInsert
+    };
+}
+
+const setColumnsInsert = (data: Data, table: TableColumns<Columns>): Fragment => {
+    const sanitizedData = { ...data }
+
+    if (sanitizedData.hasOwnProperty('erased')) delete sanitizedData.erased
+
+    const b = colsForInsert(data, table);
+    const count = b.columns.length;
+
+    const columnsForInsert = SQL`(`
+        .concat(
+            b.columns
+                .map((x) => SQL`${c(table[x.name])}`)
+                .reduce((a, x, i) => a.concat(i < count ? ', ' : empty).concat(x)),
+        )
+        .concat(')');
+
+    return columnsForInsert;
 }
 
 /**
  * Gera os binds do INSERT de acordo com os campos que chegaram e se estão presentes na tabela
  * @param data Dados do request
  * @param table Tabela
- * @returns Fragmento
+ * @returns Fragment
  */
 const setBindValuesInsert = (data: Data, table: TableColumns<Columns>): Fragment => {
-    const sanitizedData = { ...data }
-
-    if (sanitizedData.hasOwnProperty('erased')) delete sanitizedData.erased
-
-    const colsForInsert = Object.keys(sanitizedData).map((x) => table[x]).filter((x, i) => { if (x !== undefined) return x });
-    const count = colsForInsert.length;
+    const b = colsForInsert(data, table);
+    const count = b.columns.length;
 
     const bindValuesForInsert = SQL`(`
         .concat(
-            colsForInsert
-                .map((x) => SQL`${c(table[x.name])}`)
-                .reduce((a, x, i) => a.concat(i < count - 1 ? ', ' : empty).concat(x)),
-        )
-        .concat(') VALUES (')
-        .concat(
-            colsForInsert
-                .map((x) => SQL`${bind(sanitizedData[x.name])}`)
-                .reduce((a, x, i) => a.concat(i < count - 1 ? ', ' : empty).concat(x)),
+            b.columns
+                .map((x) => SQL`${bind(b.data[x.name])}`)
+                .reduce((a, x, i) => a.concat(i < count ? ', ' : empty).concat(x)),
         )
         .concat(')');
 
@@ -278,11 +278,11 @@ const setBindValuesInsert = (data: Data, table: TableColumns<Columns>): Fragment
  * @param table tabela
  * @returns Fragmento
  */
-const buildInsert = (data: Data, table: TableColumns<Columns>): Fragment => {
-    const query = SQL`INSERT INTO ${t(table)} ${setBindValuesInsert(data, table)}`;
-    //console.log(query.sql,query.values)
-    return query;
-};
+//const buildInsert = (data: Data, table: TableColumns<Columns>): Fragment => {
+//    const query = SQL`INSERT INTO ${t(table)} ${setColumnsInsert(data, table)} VALUES ${setBindValuesInsert(data, table)}`;
+//    //console.log(query.sql,query.values)
+//    return query;
+//};
 
 /**
  * Gera os binds do UPDATE de acordo com os campos que chegaram e se estão presentes na tabela
@@ -290,13 +290,13 @@ const buildInsert = (data: Data, table: TableColumns<Columns>): Fragment => {
  * @param table Tabela
  * @returns Fragmento
  */
-const setBindValuesUpdate = (data: Data, table: TableColumns<Columns>): Fragment => {
+const setBindValuesUpdate = (data: Data, table: TableColumns<Columns>, cfg = { prefix: false, quote: true }): Fragment => {
     const colsForUpdate = Object.keys(data).map((x) => table[x]).filter((x, i) => { if (x !== undefined) return x });
     const count = colsForUpdate.length;
 
     const bindValuesForUpdate = colsForUpdate
-        .map((x) => SQL`${c(table[x.name])} = ${bind(data[x.name])}`)
-        .reduce((a, x, i) => a.concat(i < count - 1 ? ', ' : empty).concat(x));
+        .map((x) => SQL`${c(table[x.name], cfg)} = ${bind(data[x.name])}`)
+        .reduce((a, x, i) => a.concat(i < count ? ', ' : empty).concat(x));
 
     return bindValuesForUpdate;
 };
@@ -308,11 +308,11 @@ const setBindValuesUpdate = (data: Data, table: TableColumns<Columns>): Fragment
  * @param config Recebe um Schema e retorna o nome da coluna (usado para filtros). Padrão {prefix:false}
  * @returns Fragmento
  */
-const buildUpdate = (data, filters, table: TableColumns<Columns>, config = { prefix: false, quote: true }) => {
-    const query = SQL`UPDATE ${t(table)}  SET ${setBindValuesUpdate(data, table)} WHERE ${generateFilters(table, filters, config)}`;
-
-    return query;
-};
+//const buildUpdate = (data, filters, table: TableColumns<Columns>, config = { prefix: false, quote: true }) => {
+//    const query = SQL`UPDATE ${t(table)}  SET ${setBindValuesUpdate(data, table)} WHERE ${generateFilters(table, filters, config)}`;
+//
+//    return query;
+//};
 
 /**
  * Constrói o DELETE
@@ -331,9 +331,11 @@ const buildDelete = (id: number, table: TableColumns<Columns>): Fragment => {
  * @param joins Joins
  * @returns Array
  */
+//TODO: 
 const extractTableJoins = (joins: Join[]) => {
     return joins.length != 0 ? joins.map((j) => j.table) : [];
 };
+
 
 const builderError = (scope: string, property: string): never => {
     throw new Error(
@@ -342,32 +344,134 @@ const builderError = (scope: string, property: string): never => {
     );
 };
 
-const builder = () => {
+type AppendQuery = (fragment: Fragment) => void;
+
+const whereBuilder = <T, TMainBuilder>(
+    mainBuilder: TMainBuilder,
+    appendQuery: AppendQuery,
+    fragments: Fragment[],
+    filters: EnumType | undefined,
+    tables: Tables<T>
+) => {
+
+    const filterBuilder = {
+        additional(fields: Array<string>) {
+            fragments.push(additionalFilters(fields, filters));
+
+            return filterBuilderProxy;
+        },
+
+        raw(fragment: Fragment) {
+            fragments.push(getRawFilters(fragment));
+
+            return filterBuilderProxy;
+        },
+
+        search(data = {}) {
+            fragments.push(searchFilter(tables, data));
+
+            return filterBuilderProxy;
+        },
+
+        end() {
+            const validFragments = fragments.filter(hasFragment);
+
+            if(validFragments.length > 0) {
+                const generatedFilters = validFragments.reduce(
+                    (a, fragment, index) =>
+                        a.concat(index > 0 ? SQL` AND ${fragment}` : fragment),
+                    empty
+                );
+
+                appendQuery(SQL` WHERE ${generatedFilters}`);
+            }
+
+            return mainBuilder;
+        }
+    };
+
+    const filterBuilderProxy = new Proxy(filterBuilder, {
+        get(target, property, receiver) {
+            if(Reflect.has(target, property)) {
+                return Reflect.get(target, property, receiver);
+            }
+
+            builderError('where', String(property));
+        }
+    });
+
+    return filterBuilderProxy;
+};
+
+const selectBuilder = (cfg = { alias: true, quote: true }) => {
     let query        = empty;
     let currentJoins: Join[] = [];
+    const alias = cfg.alias;
+    const quote = cfg.quote;
+    const prefix = cfg.alias;
 
     const mainBuilder = {
-        select(columns: Fragment | Array<Fragment>) {
-            query = query.concat(SQL`SELECT ${generateColumns(columns)}`);
+        select(...columns: Array<ColumnsInput>) {
+            const generatedColumns = generateColumns(...columns);
+
+            if(!hasFragment(generatedColumns)) {
+                throw new Error(
+                    '[QueryBuilder] O método .select() deve receber ao menos uma coluna válida.'
+                );
+            }
+
+            query = query.concat(SQL`SELECT ${generatedColumns}`);
 
             return mainBuilder;
         },
 
         from(table: TableColumns<Columns> | Fragment) {
-            query = query.concat(SQL` FROM ${table} `);
+            query = query.concat(SQL` FROM ${isFragment(table) ? table : t(table, {alias, quote})} `);
 
             return mainBuilder;
         },
 
         joins(joins: Join[] = []) {
-            currentJoins = joins;
-            query = query.concat(generateJoins(joins));
+            const rawJoins: Fragment[] = [];
 
-            return mainBuilder;
+            currentJoins = joins;
+
+            const joinBuilder = {
+                raw(fragment: Fragment) {
+                    if(hasFragment(fragment)) {
+                        rawJoins.push(fragment);
+                    }
+                
+                    return joinBuilderProxy;
+                },
+            
+                end() {
+                    query = query.concat(generateJoins(currentJoins));
+                
+                    rawJoins.forEach(fragment => {
+                        query = query.concat(fragment);
+                    });
+                
+                    return mainBuilder;
+                }
+            };
+        
+            const joinBuilderProxy = new Proxy(joinBuilder, {
+                get(target, property, receiver) {
+                    if(Reflect.has(target, property)) {
+                        return Reflect.get(target, property, receiver);
+                    }
+                
+                    builderError('joins', String(property));
+                }
+            });
+        
+            return joinBuilderProxy;
         },
 
-        where<T>( tables: Tables<T>, filters?: EnumType, config = { prefix: true, quote: true } ) {
+        where<T>( tables: Tables<T>, filters?: EnumType) {
             const fragments: Fragment[] = [];
+            const config = { prefix, quote }
 
             fragments.push(generateFilters(tables, filters, config));
             fragments.push(
@@ -378,55 +482,13 @@ const builder = () => {
                 )
             );
 
-            const filterBuilder = {
-                additional(fields: Array<string>) {
-                    fragments.push(additionalFilters(fields, filters));
-
-                    return filterBuilderProxy;
-                },
-
-                raw(fragment: Fragment) {
-                    fragments.push(getRawFilters(fragment));
-
-                    return filterBuilderProxy;
-                },
-
-                search(data = {}) {
-                    fragments.push(searchFilter(tables, data));
-
-                    return filterBuilderProxy;
-                },
-
-                end() {
-                    const validFragments = fragments.filter(
-                        fragment => fragment.strings[0]
-                    );
-
-                    if(validFragments.length > 0) {
-                        const generatedFilters = validFragments.reduce(
-                            (a, fragment, index) =>
-                                a.concat(index > 0 ? SQL` AND ${fragment}` : fragment),
-                            empty
-                        );
-
-                        query = query.concat(SQL` WHERE ${generatedFilters}`);
-                    }
-
-                    return mainBuilder;
-                }
-            };
-
-            const filterBuilderProxy = new Proxy(filterBuilder, {
-                get(target, property, receiver) {
-                    if(Reflect.has(target, property)) {
-                        return Reflect.get(target, property, receiver);
-                    }
-
-                    builderError('where', String(property));
-                }
-            });
-
-            return filterBuilderProxy;
+            return whereBuilder(
+                mainBuilder,
+                fragment => query = query.concat(fragment),
+                fragments,
+                filters,
+                tables
+            );
         },
 
         groupBy(...columns: Array<ColumnMeta<Columns> | Fragment>) {
@@ -467,13 +529,161 @@ const builder = () => {
     return mainBuilder;
 }
 
+const insertBuilder = () => {
+    let query = empty;
+    let currentTable: TableColumns<Columns> | null = null;
+
+    const mainBuilder = {
+        into(table: TableColumns<Columns>) {
+            query = query.concat(SQL`INSERT INTO ${t(table)}`);
+            currentTable = table;
+
+            return mainBuilder;
+        },
+        values(data: Data) {
+            if (!currentTable) {
+                throw new Error(
+                    '[InsertBuilder] O método .into() deve ser chamado antes de .values().'
+                );
+            }
+
+           query = query.concat(
+               setColumnsInsert(data, currentTable)
+           );
+       
+           query = query.concat(
+               SQL` VALUES ${setBindValuesInsert(data, currentTable)}`
+           );
+       
+           return mainBuilder;
+        },
+        build() {
+            return query;
+        }
+    };
+
+    return mainBuilder;
+}
+
+const updateBuilder = (cfg = { alias: false, quote: true }) => {
+    let query = empty;
+    let currentTable: TableColumns<Columns> | null = null;
+    const alias = cfg.alias;
+    const quote = cfg.quote;
+    const prefix = cfg.alias;
+
+    const mainBuilder = {
+        table(table: TableColumns<Columns>) {
+            query = query.concat(SQL`UPDATE ${t(table, { alias, quote })}`);
+            currentTable = table;
+
+            return mainBuilder;
+        },
+        set(data: Data) {
+            
+            if (!currentTable) {
+                throw new Error(
+                    '[UpdateBuilder] O método .table() deve ser chamado antes de .set().'
+                );
+            }
+
+           query = query.concat(
+               SQL` SET ${setBindValuesUpdate(data, currentTable, { prefix, quote })}`
+           );
+       
+           return mainBuilder;
+        },
+        where<T>( filters: EnumType ) {
+            const fragments: Fragment[] = [];
+
+            const fields = Object.keys(filters)
+
+            if (fields.length === 0) {
+                throw new Error(
+                    '[UpdateBuilder] Nenhum filtro foi informado'
+                );
+            }
+
+            if (!currentTable) {
+                throw new Error(
+                    '[UpdateBuilder] O método .table() deve ser chamado antes do .where()'
+                );
+            }
+
+            fragments.push(generateFilters(currentTable, filters, { prefix, quote }));
+
+            return whereBuilder(
+                mainBuilder,
+                fragment => query = query.concat(fragment),
+                fragments,
+                filters,
+                currentTable
+            );
+        },
+        build() {
+            return query;
+        }
+    };
+
+    return mainBuilder;
+}
+
+const deleteBuilder = (cfg = { alias: false, quote: true }) => {
+    let query = empty;
+    let currentTable: TableColumns<Columns> | null = null;
+    const alias = cfg.alias;
+    const quote = cfg.quote;
+    const prefix = cfg.alias;
+
+    const mainBuilder = {
+        from(table: TableColumns<Columns>) {
+            query = query.concat(SQL`DELETE FROM ${t(table, { alias, quote })}`);
+            currentTable = table;
+
+            return mainBuilder;
+        },
+        where<T>( filters: EnumType ) {
+            const fragments: Fragment[] = [];
+
+            const fields = Object.keys(filters)
+
+            if (fields.length === 0) {
+                throw new Error(
+                    '[DeleteBuilder] Nenhum filtro foi informado'
+                );
+            }
+
+            if (!currentTable) {
+                throw new Error(
+                    '[DeleteBuilder] O método .table() deve ser chamado antes do .where()'
+                );
+            }
+
+            fragments.push(generateFilters(currentTable, filters, { prefix, quote }));
+
+            return whereBuilder(
+                mainBuilder,
+                fragment => query = query.concat(fragment),
+                fragments,
+                filters,
+                currentTable
+            );
+        },
+        build() {
+            return query;
+        }
+    };
+
+    return mainBuilder;
+}
+
 const hasFragment = (fragment: Fragment) =>
     fragment.strings.some(x => x.length > 0);
 
 const hasColumn = (column: ColumnMeta<Columns> | Fragment) =>
     !('strings' in column) || hasFragment(column);
 
-const isFragment = (value: ColumnMeta<Columns> | Fragment): value is Fragment => {
+const isFragment = (value: TableColumns<Columns> |ColumnMeta<Columns> | Fragment): value is Fragment => {
     return Array.isArray((value as Fragment).strings);
 };
 
@@ -484,13 +694,14 @@ export {
     generateColumns,
     additionalFilters,
     getRawFilters,
-    buildInsert,
-    buildUpdate,
     buildDelete,
     generateSort,
     setBindValuesInsert,
     setBindValuesUpdate,
     EnumType,
     groupBy,
-    builder
+    selectBuilder,
+    insertBuilder,
+    updateBuilder,
+    deleteBuilder
 };

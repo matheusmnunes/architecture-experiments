@@ -22,6 +22,11 @@ type Fragment = typeof empty;
 
 type Data = Record<string, string | number>;
 
+type SearchFilter = {
+    property: string;
+    value: string | number;
+};
+
 //EXEMPLOS DE USO
 /*const joins = [
     {table:user, join:'innerJoin', foreignkey:user.id},
@@ -52,7 +57,7 @@ const defaultJoin = (x: Join) => {
     return SQL`${x.join ? x.join : ' LEFT JOIN'} ${x.table} ON ${x.primaryKey ? x.primaryKey : x.table.id} ${x.operator ? x.operator : '='} ${x.foreignkey} `
 }
 
-const findInSetJoin = (x) => {
+const findInSetJoin = (x: Join) => {
     return SQL`${x.join ? x.join : ' LEFT JOIN'} ${x.table} ON FIND_IN_SET(${x.primaryKey ? x.primaryKey : x.table.id}, ${x.foreignkey}) `
 }
 
@@ -88,7 +93,7 @@ const generateColumns = (...columns: Array<ColumnsInput>): Fragment => {
 const generateFilters = <T>(tables: Tables<T>, filters?: EnumType, op = '=', config = { prefix: true, quote: true }): Fragment => {
     if (!filters) return empty;
 
-    const fields = Object.keys(filters);
+    const fields = Object.keys(filters) as Array<keyof Schema<T>>;
 
     if (fields.length === 0) return empty;
     //console.log(fields)
@@ -110,21 +115,22 @@ const generateFilters = <T>(tables: Tables<T>, filters?: EnumType, op = '=', con
 
 /**
  * Gera filtros com os campos desejados a partir de um array. Ideal para campos não presentes no modelo da tabela, mas que cheguem no request.
- * Obs.:Sempre passar os campos com alias. Ex.: ['alias1.field1','alias1.field2','alias2.field1']
+ * Ex.:'alias1.field1','field2','alias2.field1'
  * @param array Lista de campos desejados
  * @param data Dados do request
  * @returns Fragmento
  */
-const additionalFilters = (array: Array<string>, data?: EnumType): Fragment => {
-    if (array.length === 0) return empty;
+const additionalFilters = (data: EnumType | undefined, ...array: Array<string> ): Fragment => {
+    if (!data || array.length === 0) return empty;
 
-    const filters = data.filters;
     const final = array
         .map((x) => {
-            const field = x.split('.');
-            return filters[field[1]] ? SQL` ${x} = ${bind(filters[field[1]])}` : empty
+            const parts = x.split('.')!;
+            const field = parts[parts.length - 1];
+            const value = data[field];
+            return value !== undefined ? SQL` ${x} = ${bind(value)}` : empty
         })
-        .reduce((a, x, i) => a.concat(x.strings[0] ? x : empty));
+        .reduce((a, x, i) => a.concat(x.strings[0] ? x : empty), empty);
 
     return final.strings[0] ? final : empty;
 };
@@ -138,21 +144,31 @@ const getRawFilters = (rawFilters = empty): Fragment => {
     return rawFilters;
 };
 
-const searchFilter = (table: any, json: any, config = { prefix: true, quote: true }) => {
-    if (Object.keys(json).length === 0) return empty
-    const filters = json.property.split(',')
 
-    const value = bind("%" + json.value + "%")
+/**
+ * 
+ * @param table 
+ * @param json 
+ * @param config 
+ * @returns 
+ */
+const searchFilter = <T>(tables: Tables<T>, json: SearchFilter, config = { prefix: true, quote: true }):Fragment => {
+    if (Object.keys(json).length === 0) return empty
+
+    const tableL  = Array.isArray(tables) ? tables : [tables];
+    const filters = json.property.split(',').map(x => x.trim().split('.').pop()!);
+    const value   = bind("%" + json.value + "%")
 
     //Por algum motivo passando string diretamente no bind não está rolando
-    const where = SQL`(`.concat(
-        filters
-            .filter(x => Object.prototype.hasOwnProperty.call(table, x.trim()))
-            .map(x => SQL`${c(table[x.trim()], config)} LIKE ${value}`)
-            .reduce((a, x) => a.concat(SQL` OR ${x}`))
-    ).concat(SQL`)`)
+    const where = tableL
+        .flatMap((table) => 
+            filters
+                .filter(x => Object.prototype.hasOwnProperty.call(table, x))
+                .map(x => SQL`${c(table[x as keyof Schema<T>], config)} LIKE ${value}`)
+        )
+        .reduce((a, x) => a.concat(a.strings[0] ? SQL` OR ${x}` : x), empty)
 
-    return where
+    return where.strings[0] ? SQL`(${where})` : empty;
 }
 
 const generateColumnList = ( ...columns: Array<ColumnMeta<Columns> | Fragment> ): Fragment => {
@@ -165,19 +181,17 @@ const generateColumnList = ( ...columns: Array<ColumnMeta<Columns> | Fragment> )
         .reduce( (a, column, ix) => a.concat(ix > 0 ? SQL`, ${column}` : column), empty );
 };
 
-function groupBy(...columns: ColumnMeta<Columns>[]): Fragment;
-function groupBy(...columns: Fragment[]): Fragment;
-function groupBy(...columns: Array<ColumnMeta<Columns> | Fragment>): Fragment {
+
+function groupBy <Columns>( ...columns: Array<ColumnMeta<Columns> | Fragment> ): Fragment {
     return generateColumnList(...columns);
 }
 
 //type Sort = {property:ColumnMeta<EnumType>, value?: 'ASC' | 'DESC'}
 //type Sort = { property: string, value?: 'ASC' | 'DESC' } //TODO: quando tiver o front-end estudar possibilidade de enviar um ColumnMeta em property
 
-type SortDirection = 'ASC' | 'DESC';
 type SortColumn = {
     column: ColumnMeta<Columns> | Fragment,
-    direction?: SortDirection
+    direction?: 'ASC' | 'DESC'
 };
 
 /**
@@ -232,6 +246,12 @@ const colsForInsert = (data: Data, table: TableColumns<Columns>): { data: Data; 
     };
 }
 
+/**
+ * 
+ * @param data 
+ * @param table 
+ * @returns 
+ */
 const setColumnsInsert = (data: Data, table: TableColumns<Columns>): Fragment => {
     const sanitizedData = { ...data }
 
@@ -320,11 +340,11 @@ const setBindValuesUpdate = (data: Data, table: TableColumns<Columns>, cfg = { p
  * @param table Tabela
  * @returns Fragmento
  */
-const buildDelete = (id: number, table: TableColumns<Columns>): Fragment => {
-    const query = SQL`UPDATE ${t(table)} SET ${c(table.erased)} = ${bind(1)} WHERE id = ${bind(id)}`;
-
-    return query;
-};
+//const buildDelete = (id: number, table: TableColumns<Columns>): Fragment => {
+//    const query = SQL`UPDATE ${t(table)} SET ${c(table.erased)} = ${bind(1)} WHERE id = ${bind(id)}`;
+//
+//    return query;
+//};
 
 /**
  * Retorna um array de tabelas usadas para compor os joins
@@ -355,8 +375,8 @@ const whereBuilder = <T, TMainBuilder>(
 ) => {
 
     const filterBuilder = {
-        additional(fields: Array<string>) {
-            fragments.push(additionalFilters(fields, filters));
+        additional(...fields: Array<string>) {
+            fragments.push(additionalFilters(filters,...fields));
 
             return filterBuilderProxy;
         },
@@ -367,7 +387,7 @@ const whereBuilder = <T, TMainBuilder>(
             return filterBuilderProxy;
         },
 
-        search(data = {}) {
+        search(data: SearchFilter) {
             fragments.push(searchFilter(tables, data));
 
             return filterBuilderProxy;
@@ -402,6 +422,7 @@ const whereBuilder = <T, TMainBuilder>(
 
     return filterBuilderProxy;
 };
+
 
 const selectBuilder = (cfg = { alias: true, quote: true }) => {
     let query        = empty;
@@ -697,20 +718,22 @@ const isFragment = (value: TableColumns<Columns> |ColumnMeta<Columns> | Fragment
 };
 
 export {
+    generateColumns,
     generateJoins,
     generateFilters,
-    generatePagination,
-    generateColumns,
     additionalFilters,
     getRawFilters,
-    buildDelete,
+    groupBy,
     generateSort,
+    generatePagination,
+    setColumnsInsert,
     setBindValuesInsert,
     setBindValuesUpdate,
-    EnumType,
-    groupBy,
+    
     selectBuilder,
     insertBuilder,
     updateBuilder,
-    deleteBuilder
+    deleteBuilder,
+
+    EnumType,
 };

@@ -85,7 +85,7 @@ const generateColumns = (...columns: Array<ColumnsInput>): Fragment => {
  * @param defaultFilters Objeto com filtros padrões. Ex: {erased:0, active:1}
  * @returns Fragmento
  */
-const generateFilters = <T>(tables: Tables<T>, filters?: EnumType, config = { prefix: true, quote: true }): Fragment => {
+const generateFilters = <T>(tables: Tables<T>, filters?: EnumType, op = '=', config = { prefix: true, quote: true }): Fragment => {
     if (!filters) return empty;
 
     const fields = Object.keys(filters);
@@ -100,7 +100,7 @@ const generateFilters = <T>(tables: Tables<T>, filters?: EnumType, config = { pr
 
     t.forEach((table, i) => {
         final = final.concat(
-            fields.map((x) => Object.prototype.hasOwnProperty.call(table, x) ? SQL`${c(table[x], config)}`.concat(table[x] ? SQL` = ${bind(f[x])}` : empty) : empty)
+            fields.map((x) => Object.prototype.hasOwnProperty.call(table, x) ? SQL`${c(table[x], config)}`.concat(table[x] ? SQL` ${op} ${bind(f[x])}` : empty) : empty)
                 .reduce((a, x, i) => a.concat(x.strings[0] ? SQL` AND ${x}` : empty))
         );
     });
@@ -469,15 +469,16 @@ const selectBuilder = (cfg = { alias: true, quote: true }) => {
             return joinBuilderProxy;
         },
 
-        where<T>( tables: Tables<T>, filters?: EnumType) {
+        where<T>( tables: Tables<T>, filters?: EnumType, op = '=') {
             const fragments: Fragment[] = [];
             const config = { prefix, quote }
 
-            fragments.push(generateFilters(tables, filters, config));
+            fragments.push(generateFilters(tables, filters, op, config));
             fragments.push(
                 generateFilters(
                     extractTableJoins(currentJoins),
                     filters,
+                    op,
                     config
                 )
             );
@@ -489,6 +490,14 @@ const selectBuilder = (cfg = { alias: true, quote: true }) => {
                 filters,
                 tables
             );
+        },
+
+        having(f:Fragment){
+            
+            if(f.strings[0])
+                query = query.concat(SQL` HAVING ${f}`)
+
+            return mainBuilder;
         },
 
         groupBy(...columns: Array<ColumnMeta<Columns> | Fragment>) {
@@ -593,7 +602,7 @@ const updateBuilder = (cfg = { alias: false, quote: true }) => {
        
            return mainBuilder;
         },
-        where<T>( filters: EnumType ) {
+        where<T>( filters: EnumType, op = '=' ) {
             const fragments: Fragment[] = [];
 
             const fields = Object.keys(filters)
@@ -610,7 +619,7 @@ const updateBuilder = (cfg = { alias: false, quote: true }) => {
                 );
             }
 
-            fragments.push(generateFilters(currentTable, filters, { prefix, quote }));
+            fragments.push(generateFilters(currentTable, filters, op = '=', { prefix, quote }));
 
             return whereBuilder(
                 mainBuilder,
@@ -642,7 +651,7 @@ const deleteBuilder = (cfg = { alias: false, quote: true }) => {
 
             return mainBuilder;
         },
-        where<T>( filters: EnumType ) {
+        where<T>( filters: EnumType, op = '=' ) {
             const fragments: Fragment[] = [];
 
             const fields = Object.keys(filters)
@@ -659,7 +668,7 @@ const deleteBuilder = (cfg = { alias: false, quote: true }) => {
                 );
             }
 
-            fragments.push(generateFilters(currentTable, filters, { prefix, quote }));
+            fragments.push(generateFilters(currentTable, filters, op, { prefix, quote }));
 
             return whereBuilder(
                 mainBuilder,

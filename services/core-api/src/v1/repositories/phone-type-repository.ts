@@ -31,6 +31,7 @@ export default class RPhoneType {
             .where(parameterTranslation, data)
                 .end()
             .groupBy(SQL`p.id, t.i18n_id, t.text`,parameterTranslation.lang)
+            .having(SQL`p.id > 1`)
             .sort(
                 {column:SQL`p.id`, direction:'ASC'},
                 {column:parameterTranslation.lang, direction:'DESC'}

@@ -19,3 +19,4 @@
 /services/core-api/.env.*.development
 /services/core-api/.env.*.test
 /services/core-api/.env.*.production
+.env

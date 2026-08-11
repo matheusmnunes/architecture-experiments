@@ -1,4 +1,4 @@
-import RPhoneType from '../repositories/phone-type-repository';
+import RPhoneType from '../repositories/phone-type.repository.js';
 
 const get = async (data: any) => {
     let phone = new RPhoneType();
@@ -20,4 +20,3 @@ export {
     insert,
     update
 }
-

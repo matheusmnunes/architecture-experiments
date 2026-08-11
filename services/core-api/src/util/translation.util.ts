@@ -1,4 +1,4 @@
-import pool from './db/mysql';
+import pool from './db/mysql.js';
 import { RowDataPacket } from 'mysql2';
 
 const translator = async(text: string, lang?:string, langs?: Array<string>) => {

@@ -1,4 +1,4 @@
-import RAddress from '../repositories/address-repository';
+import RAddress from '../repositories/address.repository.js';
 
 const get = async (data: any) => {
     let address = new RAddress();
@@ -8,4 +8,3 @@ const get = async (data: any) => {
 export {
     get
 }
-

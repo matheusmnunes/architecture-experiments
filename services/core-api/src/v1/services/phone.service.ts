@@ -1,4 +1,4 @@
-import RPhone from '../repositories/phone-repository';
+import RPhone from '../repositories/phone.repository.js';
 
 const get = async (data: any) => {
     let phone = new RPhone();
@@ -21,4 +21,3 @@ export {
     update
 
 }
-

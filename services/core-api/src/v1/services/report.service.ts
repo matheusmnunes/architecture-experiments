@@ -1,12 +1,12 @@
-import RClient from '../repositories/client-repository';
-import RPhone from '../repositories/phone-repository';
-import RAddress from '../repositories/address-repository';
-import RReport from '../repositories/report-repository';
-import {clients, client} from '../../domain/models/client.entity';
-import pdf from '../../util/easy-pdf.util';
-import RHeader from '../repositories/header-repository';
-import RFooter from '../repositories/footer-repository';
-import { replaceTableBlock } from '../../util/template.util';
+import RClient from '../repositories/client.repository.js';
+import RPhone from '../repositories/phone.repository.js';
+import RAddress from '../repositories/address.repository.js';
+import RReport from '../repositories/report.repository.js';
+import {clients, client} from '../../domain/schema/client.schema.js';
+import pdf from '../../util/easy-pdf.util.js';
+import RHeader from '../repositories/header.repository.js';
+import RFooter from '../repositories/footer.repository.js';
+import { replaceTableBlock } from '../../util/template.util.js';
 
 let lang = 'pt-BR'
 
@@ -87,4 +87,3 @@ const get = async (data: any) => {
 export {
     get
 }
-

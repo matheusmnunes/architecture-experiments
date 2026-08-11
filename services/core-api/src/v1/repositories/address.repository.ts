@@ -1,6 +1,6 @@
-import pool from '../../util/db/mysql';
-import {addresses} from '../../domain/models/address.entity';
-import {address_types} from '../../domain/models/address-type-params.entity';
+import pool from '../../util/db/mysql.js';
+import {addresses} from '../../domain/schema/address.schema.js';
+import {address_types} from '../../domain/schema/address-type-params.schema.js';
 import { pipe } from 'effect'
 import { select, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
 
@@ -30,4 +30,3 @@ export default class RAddress {
     }
 
 }
-

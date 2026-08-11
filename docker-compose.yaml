@@ -1,12 +1,12 @@
 services:
   mysql-service:
     image: mysql:8.0
-    container_name: mysql-container
-    restart: always
+    container_name: mysql-db
+    restart: unless-stopped
     environment:
-      #MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: root
-      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+      #MYSQL_USER: root
+      #MYSQL_PASSWORD: root
     ports:
       - "3306:3306"
     volumes:
@@ -31,17 +31,17 @@ services:
     networks:
       - app-network
   easy-pdf:
-    image: easy-pdf-gen:0.1.0
-    container_name: easy-pdf-gen
-    restart: always
+    image: easy-pdf-generator:0.1.0
+    container_name: easy-pdf
+    restart: unless-stopped
     environment:
-      MIN_POOL: "1"
-      MAX_POOL: "2"
-      ATM: "30000"
-      ITM: "60000"
+      MIN_POOL: ${MIN_POOL}
+      MAX_POOL: ${MAX_POOL}
+      ATM: ${ATM}
+      ITM: ${ITM}
       SERVER_PORT: ${SERVER_PORT}
     ports:
-      - 3001:3001
+      - ${DOCKER_PORTS}
     networks:
       - app-network
 
@@ -49,9 +49,9 @@ volumes:
   db_data:
     driver: local
     driver_opts:
-      type: 'none'
-      o: 'bind'
-      device: './data/mysql' # Pasta que será criada no seu diretório atual
+      type: "none"
+      o: "bind"
+      device: "./data/mysql" # Pasta que será criada no seu diretório atual
 
   #core_node_modules:
 

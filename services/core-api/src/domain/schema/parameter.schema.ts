@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { getSchemaColumns } from '../../util/schema-helper.util';
+import { getSchemaColumns } from '../../util/schema-helper.util.js';
 
 const defaultColumnsSchema = z.object({
     id: z.number().optional(),

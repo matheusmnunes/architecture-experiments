@@ -1,10 +1,10 @@
-import pool from '../../util/db/mysql';
-import {phones} from '../../domain/models/phone.entity';
-import { translator, next_i18nID } from '../../util/translation.util';
+import pool from '../../util/db/mysql.js';
+import {phones} from '../../domain/schema/phone.schema.js';
+import { translator, next_i18nID } from '../../util/translation.util.js';
 //import { select, insert, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
-import { parameterTranslation } from '../../domain/models/parameter-translation.entity';
+import { parameterTranslation } from '../../domain/schema/parameter-translation.schema.js';
 import { selectAll, select, SQL} from 'sql-string-ts';
-import { generateJoin, selectBuilder, insertBuilder,updateBuilder,deleteBuilder} from '../../util/query-builder-sql-string';
+import { selectBuilder, insertBuilder,updateBuilder,deleteBuilder} from 'query-fragments';
 
 export default class RPhoneType {
 
@@ -18,17 +18,19 @@ export default class RPhoneType {
     }
 
     getAll = async (data:any) => {
-
+        console.log(data)
+        const {filters, pagination} = data
+        
         const joins = [
           {table:parameterTranslation, join:'INNER JOIN', foreignkey:SQL`p.i18n_id`}
         ];
-        
+        //console.log(data.pagination)
         const sql = selectBuilder()
             .select([SQL`p.id, t.i18n_id, t.text`,selectAll(parameterTranslation,{as :false})])
             .from(SQL`phone_type_params p`)
             .joins(joins)
                 .end()
-            .where(parameterTranslation, data)
+            .where(parameterTranslation, filters)
                 .end()
             .groupBy(SQL`p.id, t.i18n_id, t.text`,parameterTranslation.lang)
             .having(SQL`p.id > 1`)
@@ -36,7 +38,7 @@ export default class RPhoneType {
                 {column:SQL`p.id`, direction:'ASC'},
                 {column:parameterTranslation.lang, direction:'DESC'}
             )
-            .pagination(data.start, data.limit)
+            .pagination(pagination.start, pagination.limit)
             .build()
 
         //const sql = buildInsert()

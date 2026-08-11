@@ -1,4 +1,4 @@
-import {get} from '../services/address.service';
+import {get} from '../services/address.service.js';
 
 const address = (router: any) => 
     router

@@ -1,6 +1,6 @@
 
 
-const replaceTableBlock = (template: string, records: Record<string, any>[], prefix: string): string => {
+export const replaceTableBlock = (template: string, records: Record<string, any>[], prefix: string): string => {
   const blockRegex = /\[_(.+?)_\]/s;
   const match = template.match(blockRegex);
   
@@ -28,8 +28,4 @@ const replaceTableBlock = (template: string, records: Record<string, any>[], pre
   }).join('\n');
 
   return template.replace(blockRegex, rows);
-}
-
-export = {
-    replaceTableBlock
 }

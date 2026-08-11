@@ -1,4 +1,4 @@
-import pool from '../../util/db/mysql';
+import pool from '../../util/db/mysql.js';
 import { select, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
 import { RowDataPacket } from 'mysql2';
 
@@ -28,4 +28,3 @@ export default class RFooter {
     }
 
 }
-

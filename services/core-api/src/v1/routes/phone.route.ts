@@ -1,4 +1,4 @@
-import {get, insert, update} from '../services/phone.service';
+import {get, insert, update} from '../services/phone.service.js';
 
 const phone = (router: any) => 
     router

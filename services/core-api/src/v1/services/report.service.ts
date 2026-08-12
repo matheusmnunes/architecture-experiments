@@ -1,6 +1,6 @@
 import RClient from '../repositories/client.repository.js';
 import RPhone from '../repositories/phone.repository.js';
-import RAddress from '../repositories/address.repository.js';
+import RAddress from '../repositories/client-address.repository.js';
 import RReport from '../repositories/report.repository.js';
 import {clients, client} from '../../domain/schema/client.schema.js';
 import pdf from '../../util/easy-pdf.util.js';

@@ -1,4 +1,4 @@
-import RAddress from '../repositories/address.repository.js';
+import RAddress from '../repositories/client-address.repository.js';
 
 const get = async (data: any) => {
     let address = new RAddress();

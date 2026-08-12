@@ -1,7 +1,10 @@
 import Koa, {Next} from 'koa';
 import Router,  { RouterContext } from '@koa/router';
-import controllers from './controllers';
+import controllers from './controllers.js';
 import bodyParser from 'koa-bodyparser';
+import { query } from './middlewares/input.middleware.js';
+import { errorHandler } from './middlewares/error.middleware.js';
+import { response } from './middlewares/response.middleware.js';
 
 //import bodyParser from 'koa-bodyparser';
 
@@ -19,7 +22,10 @@ app
   console.log(`Request: ${ctx.method} ${ctx.url}`);
   await next();
 })
+.use(errorHandler)
+.use(response)
 .use(bodyParser())
+.use(query)
 .use(router.routes())
 .use(router.allowedMethods());
 

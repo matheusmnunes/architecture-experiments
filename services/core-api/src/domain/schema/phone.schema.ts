@@ -1,26 +1,19 @@
-import { schema, sql, all } from '@vanit-co/sql-ts';
+import { schema } from 'sql-string-ts';
+import { z } from 'zod';
+import { schemaToEnum } from '../../util/schema-helper.util.js';
 
-const columns = [
-    'id', 'id_client', 'id_phone_type', 'number', 'main', 'erased'
-];
+export const phoneSchemaBase = z.object({
+    id           : z.number(),
+    client_id    : z.number(),
+    phone_type_id: z.number(),
+    number       : z.string(),
+    main         : z.number(),
+    erased       : z.number(),
+});
 
-const phones = schema({table : 'clients_phones', columns: columns, alias: 'cp'});
+const columns = schemaToEnum(phoneSchemaBase);
 
-type phone = {
-    id           : number,
-    id_client    : string,
-    id_phone_type: string,
-    number       : string,
-    main         : string,
-}
+export const phones = schema({ table: 'clients_phones', columns: columns, alias: 'cp' });
 
-class Phone {
-    constructor(data:phone
-    ){}
-}
+export type Phone = z.output<typeof phoneSchemaBase>;
 
-export {
-    phones,
-    phone,
-    Phone
-};

@@ -1,10 +1,10 @@
-import {get, insert,update} from '../services/phone-type.service';
+import {get, insert,update} from '../services/phone-type.service.js';
 
 
 const phone = (router: any) => 
     router
-        .get('/phonetype', async(ctx:any) => {
-            ctx.body = await get(Object.assign(ctx.params,ctx.query));
+        .get('/phonetype', async(ctx) => {
+            ctx.body = await get(ctx.state.input.query ?? {});
         })
         .get('/phonetype/:id', async(ctx:any) => {
             ctx.body = await get(Object.assign(ctx.params,ctx.query));

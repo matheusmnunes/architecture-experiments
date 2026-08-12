@@ -1,4 +1,4 @@
-import {get} from '../services/report.service';
+import {get} from '../services/report.service.js';
 
 const report = (router: any) => 
     router

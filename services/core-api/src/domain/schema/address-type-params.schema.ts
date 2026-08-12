@@ -1,19 +1,19 @@
-import { schema, sql, all } from '@vanit-co/sql-ts';
+import { schema } from 'sql-string-ts';
+import { z } from 'zod';
+import { schemaToEnum } from '../../util/schema-helper.util.js';
+import { defaultColumnsSchema } from './parameter.schema.js';
 
-const columns = [
-    'id', 'i18n_id','text', 'code', 'erased'
-];
+export const addressTypeSchemaBase = defaultColumnsSchema.extend({code: z.string()});
 
-const address_types = schema({table : 'address_type_params', columns: columns, alias: 'atp'});
+const columns = schemaToEnum(addressTypeSchemaBase);
 
-type address_type = {
-    id     : number,
-    i18n_id: number,
-    text   : string,
-    code   : string,
-}
+export const address_types = schema({table : 'address_type_params', columns: columns, alias: 'atp'});
 
-export {
-    address_types,
-    address_type
-};
+export type AddressType = z.output<typeof addressTypeSchemaBase>;
+
+//type address_type = {
+//    id     : number,
+//    i18n_id: number,
+//    text   : string,
+//    code   : string,
+//}

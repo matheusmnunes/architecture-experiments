@@ -1,12 +1,10 @@
 import pool from '../../util/db/mysql.js';
-import { select, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
+import { SQL, bind, } from 'sql-string-ts' 
 import { RowDataPacket } from 'mysql2';
-
 interface ReportTemplate extends RowDataPacket {
-  id: number;
+  id  : number;
   html: string;
 }
-
 export default class RFooter {
 
     private conn = pool;
@@ -19,11 +17,10 @@ export default class RFooter {
     }
 
     getAll = async (data:any):Promise<ReportTemplate[]> => {
-        const sql = select`SELECT id, html FROM clients_footer_templates WHERE erased = 0 and id = ${data.id}`;
+        const sql = SQL`SELECT id, html FROM clients_footer_templates WHERE erased = 0 and id = ${bind(data.id)}`;
         const [rows] = await this.conn.query<ReportTemplate[]>(sql);
 
         return rows;
-        
         
     }
 

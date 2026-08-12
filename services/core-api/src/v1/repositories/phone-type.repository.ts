@@ -1,7 +1,6 @@
 import pool from '../../util/db/mysql.js';
 import {phones} from '../../domain/schema/phone.schema.js';
 import { translator, next_i18nID } from '../../util/translation.util.js';
-//import { select, insert, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
 import { parameterTranslation } from '../../domain/schema/parameter-translation.schema.js';
 import { selectAll, select, SQL} from 'sql-string-ts';
 import { selectBuilder, insertBuilder,updateBuilder,deleteBuilder} from 'query-fragments';

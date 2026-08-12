@@ -1,0 +1,24 @@
+import { schema } from 'sql-string-ts';
+import { z } from 'zod';
+import { schemaToEnum } from '../../util/schema-helper.util.js';
+
+export const clientSchemaBase = z.object({
+    id  : z.number().optional(),
+    name: z.string({
+        error: 'errorFieldRequired',
+    }).optional(),
+    email      : z.string().optional(),
+    cpf_cnpj   : z.string().optional(),
+    person_type: z.string().length(1).optional(),
+    birth_date : z.coerce.date().optional(),
+    active     : z.number().lte(1, { message: 'errorActiveInvalid' }).nonnegative().optional(),
+    created_at : z.date().optional(),
+    updated_at : z.date().optional(),
+    erased     : z.number().lte(1).nonnegative().optional(),
+});
+
+const columns = schemaToEnum(clientSchemaBase);
+
+export const clients = schema({ table: 'clients', columns: columns, alias: 'c' });
+
+export type Client = z.output<typeof clientSchemaBase>;

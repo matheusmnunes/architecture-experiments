@@ -2,7 +2,7 @@ import { schema } from 'sql-string-ts';
 import { z } from 'zod';
 import { schemaToEnum } from '../../util/schema-helper.util.js';
 
-export const phoneSchemaBase = z.object({
+export const clientPhoneSchemaBase = z.object({
     id           : z.number(),
     client_id    : z.number(),
     phone_type_id: z.number(),
@@ -11,9 +11,9 @@ export const phoneSchemaBase = z.object({
     erased       : z.number(),
 });
 
-const columns = schemaToEnum(phoneSchemaBase);
+const columns = schemaToEnum(clientPhoneSchemaBase);
 
-export const phones = schema({ table: 'clients_phones', columns: columns, alias: 'cp' });
+export const clients_phones = schema({ table: 'clients_phones', columns: columns, alias: 'cp' });
 
-export type Phone = z.output<typeof phoneSchemaBase>;
+export type ClientPhone = z.output<typeof clientPhoneSchemaBase>;
 

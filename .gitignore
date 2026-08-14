@@ -23,3 +23,6 @@
 .DS_Store
 **/.DS_Store
 *.txt
+/services/core-api/cache
+/services/core-api/patches/
+/dump_bkp/

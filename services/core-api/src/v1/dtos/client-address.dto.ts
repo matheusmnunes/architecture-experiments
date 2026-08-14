@@ -1,16 +1,24 @@
 import { z } from 'zod';
 import { clientAddressSchemaBase } from '../../domain/schema/client-address.schema.js';
 
-export const clientAdressResponseDTO = clientAddressSchemaBase
+export const clientAddressResponseDTO = clientAddressSchemaBase
     .omit({erased: true})
     .extend({
-        address_type:z.string()
+        type : z.string().optional(),
+        city : z.string().optional(),
+        state: z.string().optional()
     });
 
-export type ClientAdressResponseDTO = z.output<typeof clientAdressResponseDTO>;
-export const clientAdressListResponseDTO = z.array(clientAdressResponseDTO);
-export type ClientAdressListResponseDTO = z.output<typeof clientAdressListResponseDTO>;
+export type ClientAddressResponseDTO = z.output<typeof clientAddressResponseDTO>;
+export const clientAddressListResponseDTO = z.array(clientAddressResponseDTO);
+export type ClientAddressListResponseDTO = z.output<typeof clientAddressListResponseDTO>;
 
+
+export const getClientAddressParamsDTO = z.object({
+    client_id: z.coerce.number().int().positive()
+}).strict();
+
+export type GetClientAddressParamsDTO = z.output<typeof getClientAddressParamsDTO>;
 /*
 class ClientAddress {
     //constructor(data:phone

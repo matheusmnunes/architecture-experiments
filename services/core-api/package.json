@@ -15,7 +15,6 @@
     "@koa/router"     : "15.4.0",
     "zod"             : "4.3.6",
     "mysql2"          : "3.3.0",
-    "@vanit-co/sql-ts": "0.7.0",
     "effect"          : "3.21.2",
     "dotenv"          : "17.4.2",
     "koa-bodyparser"  : "^4.4.1",
@@ -23,10 +22,11 @@
     "query-fragments" : "^0.1.0"
   },
   "devDependencies": {
-    "typescript"   : "^6.0.2",
-    "@types/koa"   : "^3.0.2",
-    "tsx"          : "^4.21.0",
-    "nodemon"      : "^3.1.0",
-    "@types/dotenv": "8.2.3"
+    "typescript"           : "^6.0.2",
+    "@types/koa"           : "^3.0.2",
+    "tsx"                  : "^4.21.0",
+    "nodemon"              : "^3.1.0",
+    "@types/dotenv"        : "8.2.3",
+    "@types/koa-bodyparser": "4.3.13"
   }
 }

@@ -1,9 +1,19 @@
-import 'dotenv/config';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { fileURLToPath } from 'node:url';
 import * as path from 'path';
 
 const host = process.env.PDF_HOST;
+
+if (!host) {
+  throw new Error(
+    'PDF_HOST environment variable is required',
+  );
+}
+
+const moduleDirectory = path.dirname(
+  fileURLToPath(import.meta.url),
+);
 
 type PDF = {
     html?:string,
@@ -62,10 +72,10 @@ const pdf = async (data: PDF): Promise<string> => {
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer      = Buffer.from(arrayBuffer);
 
-    const fileName = `${crypto.randomBytes(16).toString('hex')}.pdf`;
-    const cachePath = path.resolve(__dirname, '../../cache');
+    const fileName  = `${crypto.randomBytes(16).toString('hex')}.pdf`;
+    const cachePath = process.env.CACHE_PATH ?? path.resolve(moduleDirectory, '../../cache');
 
     if (!fs.existsSync(cachePath)) {
         fs.mkdirSync(cachePath, { recursive: true });

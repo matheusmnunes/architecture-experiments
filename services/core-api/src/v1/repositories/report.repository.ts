@@ -1,5 +1,5 @@
 import pool from '../../util/db/mysql.js';
-import { select, selectAs, join, where, all, empty,concat,pick } from '@vanit-co/sql-ts' 
+import { SQL, bind } from 'sql-string-ts' 
 import { RowDataPacket } from 'mysql2';
 
 interface ReportTemplate extends RowDataPacket {
@@ -18,13 +18,11 @@ export default class RReport {
 
     }
 
-    getAll = async (data:any):Promise<ReportTemplate[]> => {
-        const sql = select`SELECT id, html FROM clients_report_templates WHERE erased = 0 and id = ${data.id}`;
+    getAll = async (idTemplate: number):Promise<ReportTemplate[]> => {
+        const sql = SQL`SELECT id, html FROM clients_report_templates WHERE erased = 0 AND id = ${bind(idTemplate)}`;
         const [rows] = await this.conn.query<ReportTemplate[]>(sql);
-
+        
         return rows;
-        
-        
     }
 
 }

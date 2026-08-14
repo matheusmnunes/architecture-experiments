@@ -3,15 +3,20 @@ import { RowDataPacket } from 'mysql2';
 
 const translator = async(text: string, lang?:string, langs?: Array<string>) => {
     
-    const KEY = process.env.TRANSLATION_KEY;
-    const DEV = process.env.DEV;
+    const KEY    = process.env.TRANSLATION_KEY;
+    const DEV    = process.env.DEV === 'true';
+    const devUrl = process.env.TRANSLATION_DEV_URL;
 
-    const languages = langs || ['pt_BR','es','en', 'de'];
-    const language = lang || 'pt_BR';
+    const languages = langs || ['pt-BR','es-ES','en-US', 'de-DE'];
+    const language = lang || 'pt-BR';
     let result:Array<{lang:string, text: string}> = [];
     
     if(DEV){
-        const response = await fetch(`https://script.google.com/macros/s/AKfycbw1ubKWU8bxcmlKx6hcpkEhys9u2EWl-91PezPb9uOHMVDvOBTBHzPnw5KgTkhbquAU/exec`, {
+        if (!devUrl) {
+          throw new Error( 'TRANSLATION_DEV_URL is required' );
+        }
+
+        const response = await fetch(devUrl, {
             method : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body   : JSON.stringify({

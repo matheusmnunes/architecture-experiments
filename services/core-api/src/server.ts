@@ -8,12 +8,16 @@ import { response } from './middlewares/response.middleware.js';
 
 //import bodyParser from 'koa-bodyparser';
 
+const port = process.env.API_PORT;
+const host = process.env.API_HOST;
+
 const app    = new Koa();
 const router = new Router({
   prefix   : '/api/v1',
   exclusive: true,
-  host     : 'localhost:3000'
+  host     : `${host}:3000`
 });
+
 
 controllers.forEach((c: any) => c(router));
 
@@ -33,6 +37,6 @@ router.stack.forEach((r: any) => {
   console.log(`Carregando rota: ${r.path} - ${r.methods}`);
 });
 
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+app.listen(process.env.API_PORT, () => {
+  console.log(`Server running on http://${host}:${port}`);
 });

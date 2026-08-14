@@ -1,12 +1,16 @@
 import { clientSchemaBase } from '../../domain/schema/client.schema.js'
 import { z } from 'zod';
-import { phoneResponseDTO } from './phone.dto.js';
+import { clientPhoneResponseDTO } from './client-phone.dto.js';
+import { clientAddressResponseDTO } from './client-address.dto.js';
 
 export const clientResponseDTO = clientSchemaBase
     .omit({ erased: true })
     .extend({
         phones: z
-            .array(phoneResponseDTO)
+            .array(clientPhoneResponseDTO)
+            .default([]),
+        addresses: z
+            .array(clientAddressResponseDTO)
             .default([]),
     });
 

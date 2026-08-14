@@ -4,17 +4,15 @@ import { schemaToEnum } from '../../util/schema-helper.util.js';
 
 export const clientSchemaBase = z.object({
     id  : z.number().optional(),
-    name: z.string({
-        error: 'errorFieldRequired',
-    }).optional(),
-    email      : z.string().optional(),
-    cpf_cnpj   : z.string().optional(),
-    person_type: z.string().length(1).optional(),
-    birth_date : z.coerce.date().optional(),
-    active     : z.number().lte(1, { message: 'errorActiveInvalid' }).nonnegative().optional(),
-    created_at : z.date().optional(),
+    name: z.string({ error: 'errorFieldRequired' }),
+    email      : z.string(),
+    cpf_cnpj   : z.string(),
+    person_type: z.string().length(1),
+    birth_date : z.coerce.date(),
+    active     : z.number().lte(1, { message: 'errorActiveInvalid' }).nonnegative(),
+    created_at : z.date(),
     updated_at : z.date().optional(),
-    erased     : z.number().lte(1).nonnegative().optional(),
+    erased     : z.number().lte(1).nonnegative()
 });
 
 const columns = schemaToEnum(clientSchemaBase);

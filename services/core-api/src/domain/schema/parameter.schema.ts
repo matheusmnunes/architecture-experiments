@@ -2,8 +2,9 @@ import * as z from 'zod';
 import { getSchemaColumns } from '../../util/schema-helper.util.js';
 
 const defaultColumnsSchema = z.object({
-    id: z.number().optional(),
-    text: z.string({
+    id     : z.number().optional(),
+    i18n_id: z.number(),
+    text   : z.string({
         error : 'errorFieldRequired',
     }),
     active: z.number().lte(1, {message:'errorActiveInvalid'}).nonnegative().optional(),

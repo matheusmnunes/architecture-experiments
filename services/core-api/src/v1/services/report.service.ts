@@ -1,18 +1,32 @@
 import RClient from '../repositories/client.repository.js';
-import RPhone from '../repositories/phone.repository.js';
+import RPhone from '../repositories/client-phone.repository.js';
 import RAddress from '../repositories/client-address.repository.js';
 import RReport from '../repositories/report.repository.js';
-import {clients, client} from '../../domain/schema/client.schema.js';
 import pdf from '../../util/easy-pdf.util.js';
 import RHeader from '../repositories/header.repository.js';
 import RFooter from '../repositories/footer.repository.js';
 import { replaceTableBlock } from '../../util/template.util.js';
+import { Context } from '../../types/context.type.js';
+import { Client } from '../../domain/schema/client.schema.js';
+import { ClientPhone } from '../../domain/schema/client-phone.schema.js';
+import { ClientAddress } from '../../domain/schema/client-address.schema.js';
 
-let lang = 'pt-BR'
+export type GeneratedReport = {
+  fileName    : string
+};
 
-const get = async (data: any) => {
+export const generate = async (data: Context): Promise<GeneratedReport> => {
 
-    lang = data.lang || 'pt-BR';
+    if (!data || !data.filters)
+      throw new Error( 'Filters is required' );
+
+    const lang = typeof 
+        data.filters?.lang === 'string' 
+            ? data.filters?.lang 
+            : 'pt-BR';
+    
+    const client_id  = data.filters.client_id as number;
+    const idTemplate = data.filters.id as number;
 
     const x = new RReport();
     const a = new RClient();
@@ -21,16 +35,16 @@ const get = async (data: any) => {
 
     const h = new RHeader();
     const f = new RFooter();
-    
-    let template  = await x.getAll(data);
-    let client    = await a.getAll({id : data.clientId});
-    let phones    = await b.getAll(data);
-    let addresses = await c.getAll(data);
+
+    let template  = await x.getAll(idTemplate);
+    let client    = await a.getAll({filters:{id: client_id, lang: lang}});
+    let phones    = await b.findByClientIds([client_id], lang);
+    let addresses = await c.findByClientIds([client_id], lang);
     let header    = await h.getAll({id:1});
     let footer    = await f.getAll({id:1});
     
-    const body = processHTML(template[0].html, client[0], phones, addresses)
-    const j    = processHeaderFooter(header[0].html, footer[0].html);
+    const body = processHTML(template[0].html, lang, client.rows[0], phones, addresses)
+    const j    = processHeaderFooter(header[0].html, footer[0].html, lang);
 
     const z = {
         html  : body,
@@ -38,14 +52,18 @@ const get = async (data: any) => {
         header: j.header
     }
 
-    return pdf(z);
+    const fileName = await pdf(z);
+
+    return { fileName }
+    
     
  }
 
- const processHTML = (template: string, client: any, phones: any, address: any):string => {
+const processHTML = (
+    template: string, lang: string, client: Client, phones: ClientPhone[], addresses: ClientAddress[]
+):string => {
     
     let body = template;
-    
     
     body = body.replace('{:NAME}'           , client.name);
     body = body.replace('{:EMAIL}'          , client.email);
@@ -55,12 +73,12 @@ const get = async (data: any) => {
     body = body.replace('{:ACTIVE}'         , client.active ? 'Ativo' : 'Inativo');
     
     body = replaceTableBlock(body, phones,'PHONE');
-    body = replaceTableBlock(body, address,'ADDRESS');
+    body = replaceTableBlock(body, addresses,'ADDRESS');
     
     return body; 
  }
 
- const processHeaderFooter = (header:string,footer:string) =>{
+ const processHeaderFooter = (header:string,footer:string, lang:string) =>{
 
     const now = new Date();
     const values: Record<string, string> = {
@@ -84,6 +102,3 @@ const get = async (data: any) => {
     return { header: headerFinal, footer: footerFinal };
  }
 
-export {
-    get
-}

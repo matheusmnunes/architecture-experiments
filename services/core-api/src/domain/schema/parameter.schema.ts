@@ -1,7 +1,7 @@
 import * as z from 'zod';
-import { getSchemaColumns } from '../../util/schema-helper.util.js';
+import { getSchemaColumns, schemaToEnum } from '../../util/schema-helper.util.js';
 
-const defaultColumnsSchema = z.object({
+export const defaultColumnsSchema = z.object({
     id     : z.number().optional(),
     i18n_id: z.number(),
     text   : z.string({
@@ -12,9 +12,9 @@ const defaultColumnsSchema = z.object({
 });
 
 //const defaultColumns = Object.keys(defaultColumnsSchema.shape) as Array<keyof z.infer<typeof defaultColumnsSchema>>;
-const defaultColumns = getSchemaColumns(defaultColumnsSchema);
+export const defaultColumns = getSchemaColumns(defaultColumnsSchema);
 
-export {
-    defaultColumns,
-    defaultColumnsSchema
-}
+export const columnsParams = schemaToEnum(defaultColumnsSchema);
+
+export type Params = z.output<typeof defaultColumnsSchema>;
+

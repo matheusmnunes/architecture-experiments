@@ -1,22 +1,15 @@
-import RPhoneType from '../repositories/phone-type.repository.js';
+import { phone_types } from '../../domain/schema/phone-type-params.schema.js';
+//import RPhoneType from '../repositories/parameter.repository.js';
+import { parameterService } from './parameter.service.js';
 
-const get = async (data: any) => {
-    let phone = new RPhoneType();
-    return await phone.getAll(data);
- }
+export const { get } = parameterService(phone_types);
 
-const insert = async (data: any) => {
-   let phone = new RPhoneType();
-   return await phone.insert(data);
-}
-
-const update = async (data: any) => {
-   let phone = new RPhoneType();
-   return await phone.update(data);
-}
-
-export {
-    get,
-    insert,
-    update
-}
+//export const insert = async (data: any) => {
+//   let phone = new RPhoneType();
+//   return await phone.insert(data);
+//}
+//
+//export const update = async (data: any) => {
+//   let phone = new RPhoneType();
+//   return await phone.update(data);
+//}

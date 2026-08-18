@@ -1,5 +1,4 @@
-import { phone_types } from '../../domain/schema/phone-type-params.schema.js';
-//import RPhoneType from '../repositories/parameter.repository.js';
+import { phone_types } from '../../domain/schema/phone-type-param.schema.js';
 import { parameterService } from './parameter.service.js';
 
 export const { get } = parameterService(phone_types);

@@ -3,7 +3,7 @@ import {
     clients_addresses as addresses, 
     ClientAddress
 } from '../../domain/schema/client-address.schema.js';
-import { address_types } from '../../domain/schema/address-type-params.schema.js';
+import { address_types } from '../../domain/schema/address-type-param.schema.js';
 import { SQL, selectAll, bind } from 'sql-string-ts';
 import { Context } from '../../types/context.type.js';
 import { CollectionResult } from '../../types/collection.type.js';

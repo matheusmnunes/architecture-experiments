@@ -26,3 +26,5 @@
 /services/core-api/cache
 /services/core-api/patches/
 /dump_bkp/
+*.pdf
+ARCHITECTURE.md

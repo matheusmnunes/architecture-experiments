@@ -28,8 +28,8 @@ export default class ParamaterRepository {
 
     }
 
-    getAll = (t: Schema<EnumType>) => {
-        const load = async (data:RepositoryContext) :Promise<CollectionResult<Params>> => {
+    getAll = <T = Params>(t: Schema<EnumType>) => {
+        const load = async (data:RepositoryContext) :Promise<CollectionResult<T>> => {
 
             const {filters, pagination} = data;
         
@@ -51,15 +51,15 @@ export default class ParamaterRepository {
             const sqlT = getSQL( SQL`COUNT(*) AS total` ).build();
             const [total] = await this.conn.query<CountRow[]>(sqlT);
 
-            const sql    = getSQL( select({as:false},t.id,t.active),selectAll(parameterTranslation,{as :false}) )
+            const sql    = getSQL( select({as:false},t.id,t.active,t.code),selectAll(parameterTranslation,{as :false}) )
                 .sort(
                     {column:t.id, direction:'ASC'},
                     {column:parameterTranslation.lang, direction:'DESC'}
                 )
                 //.pagination(pagination.start, pagination.limit)
                 .build()
-            console.log(sql)
-            const [rows] = await this.conn.query<PARAMS[]>(sql);
+            console.log(sql.text)
+            const [rows] = await this.conn.query<T & PARAMS[]>(sql);
 
             //const sql = buildInsert()
             //    .into(parameterTranslation)

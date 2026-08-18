@@ -1,11 +1,11 @@
 import type { RouterContext } from '@koa/router';
-import {get, insert,update} from '../services/phone-type.service.js';
-import { listPhonesType } from '../controllers/phone-type.controller.js';
+import {get, insert,update} from '../services/phone-type-param.service.js';
+import { listPhonesType } from '../controllers/phone-type-param.controller.js';
 import { validate } from '../../middlewares/validate.middleware.js';
 import { getParamsDTO } from '../dtos/parameter.dto.js';
 
 
-const phone = (router: any) => 
+const phoneType = (router: any) => 
     router
         .get('/phonetype', listPhonesType)
         .get('/phonetype/:id', validate({params: getParamsDTO}), listPhonesType)
@@ -19,4 +19,4 @@ const phone = (router: any) =>
         //    ctx.body =  {success: res };
         //})
 
-export default phone;
+export default phoneType;

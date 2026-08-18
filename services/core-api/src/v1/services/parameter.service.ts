@@ -9,8 +9,8 @@ import ParamaterRepository from '../repositories/parameter.repository.js';
 const DEFAULT_START = 0;
 const DEFAULT_LIMIT = 20;
 
-export const parameterService = (table: Schema<EnumType>) => {
-    const get = async (query: Context): Promise<ServiceResult<Params>> => {
+export const parameterService = <T = Params>(table: Schema<EnumType>) => {
+    const get = async (query: Context): Promise<ServiceResult<T>> => {
         const pagination = {
             start: query.pagination?.start ?? DEFAULT_START,
             limit: query.pagination?.limit ?? DEFAULT_LIMIT
@@ -18,7 +18,7 @@ export const parameterService = (table: Schema<EnumType>) => {
 
         const repository = new ParamaterRepository();
         const result     = await repository
-            .getAll(table)
+            .getAll<T>(table)
             .load({ ...query, pagination });
 
         return { ...result, pagination };

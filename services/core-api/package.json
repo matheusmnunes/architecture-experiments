@@ -1,7 +1,7 @@
 {
-  "name": "system-service",
+  "name": "core-api",
   "version": "0.1.1",
-  "description": "system module",
+  "description": "core module",
   "main": "app.js",
   "keywords": ["node", "npm"],
   "author": "MMN",
